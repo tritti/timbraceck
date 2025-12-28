@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Login Admin{% endblock %}
+
+{% block content %}
+<div class="fade-in d-flex align-items-center justify-content-center" style="min-height: 80vh;">
+    <div class="col-md-5 col-lg-4">
+        <div class="text-center mb-4">
+            <div class="avatar-circle bg-primary text-white mx-auto mb-3 d-flex align-items-center justify-content-center shadow"
+                style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                <i class="fas fa-lock"></i>
+            </div>
+            <h2 class="fw-bold">Area Riservata</h2>
+            <p class="text-muted">Accedi per gestire le timbrature</p>
+        </div>
+
+        <div class="card border-0 shadow-lg">
+            <div class="card-body p-4 p-md-5">
+                <form method="post" action="{{ url_for('login') }}">
+                    <div class="mb-4">
+                        <label for="username"
+                            class="form-label small text-uppercase fw-bold text-muted">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i
+                                    class="fas fa-user text-muted"></i></span>
+                            <input type="text" class="form-control bg-light border-start-0 ps-0" id="username"
+                                name="username" required autofocus placeholder="Inserisci username">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="password"
+                            class="form-label small text-uppercase fw-bold text-muted">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i
+                                    class="fas fa-key text-muted"></i></span>
+                            <input type="password" class="form-control bg-light border-start-0 ps-0" id="password"
+                                name="password" required placeholder="Inserisci password">
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                            Accedi <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('index') }}" class="text-decoration-none text-muted small">
+                <i class="fas fa-arrow-left me-1"></i> Torna alla home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

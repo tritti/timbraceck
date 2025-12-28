@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h1 class="h2 mb-1">Dashboard Amministratore</h1>
+            <p class="text-muted">Benvenuto, {{ session.username }}. Gestisci dipendenti e visualizza i report.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <span class="badge bg-light text-dark border p-2">
+                <i class="far fa-calendar-alt me-2"></i> {{ now.strftime('%d/%m/%Y') if now else '' }}
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-lift transition-transform">
+                <div class="card-body text-center p-4">
+                    <div class="avatar-circle bg-primary-subtle text-primary mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Gestione Dipendenti</h5>
+                    <p class="card-text text-muted small mb-4">Aggiungi, modifica o rimuovi i dipendenti dal sistema.
+                    </p>
+                    <a href="{{ url_for('admin_dipendenti') }}" class="btn btn-outline-primary w-100 stretched-link">
+                        Gestisci
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-lift transition-transform">
+                <div class="card-body text-center p-4">
+                    <div class="avatar-circle bg-success-subtle text-success mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Report Timbrature</h5>
+                    <p class="card-text text-muted small mb-4">Visualizza i report dettagliati delle timbrature.</p>
+                    <a href="{{ url_for('admin_report') }}" class="btn btn-outline-success w-100 stretched-link">
+                        Visualizza
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-lift transition-transform">
+                <div class="card-body text-center p-4">
+                    <div class="avatar-circle bg-info-subtle text-info mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Situazione Attuale</h5>
+                    <p class="card-text text-muted small mb-4">Visualizza la situazione attuale dei dipendenti presenti.
+                    </p>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-info w-100 stretched-link">
+                        Controlla
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-lift transition-transform">
+                <div class="card-body text-center p-4">
+                    <div class="avatar-circle bg-warning-subtle text-warning mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Password Dipendenti</h5>
+                    <p class="card-text text-muted small mb-4">Reimposta la password per l'accesso dei dipendenti.</p>
+                    <a href="{{ url_for('admin_change_password_dipendenti') }}"
+                        class="btn btn-outline-warning w-100 stretched-link">
+                        Modifica
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">Riepilogo Ore Lavorate <small class="text-muted fw-normal ms-2">(Ultimi 30
+                            giorni)</small></h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="chartOreTotali"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Carica i dati per il grafico
+        fetch('/api/report/totale?periodo=mese')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    document.getElementById('chartOreTotali').parentNode.innerHTML =
+                        '<div class="text-center p-4"><p>Nessun dato disponibile per il periodo selezionato.</p></div>';
+                    return;
+                }
+
+                // Prepara i dati per il grafico
+                const labels = data.map(d => d.nome + ' ' + d.cognome);
+                const oreTotali = data.map(d => d.ore_totali);
+
+                // Crea il grafico
+                const ctx = document.getElementById('chartOreTotali').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Ore Lavorate',
+                            data: oreTotali,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Ore'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Dipendenti'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento dei dati:', error);
+                document.getElementById('chartOreTotali').parentNode.innerHTML =
+                    '<div class="text-center p-4 text-danger"><p>Errore nel caricamento dei dati.</p></div>';
+            });
+    });
+</script>
+{% endblock %}

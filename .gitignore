@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Database
+*.sqlite3
+*.db
+data/timbrature.db
+
+# Mac
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Dotfiles
+.env
+
+# Agent
+.gemini/

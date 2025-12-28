@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifica Dipendente{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}"
+                            class="text-decoration-none">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dipendenti') }}"
+                            class="text-decoration-none">Dipendenti</a></li>
+                    <li class="breadcrumb-item active">Modifica Dipendente</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4 align-items-center">
+        <div class="col-12">
+            <h1 class="h2 mb-1">Modifica Dipendente</h1>
+            <p class="text-muted">Modifica i dettagli e visualizza lo storico di {{ dipendente.nome }} {{
+                dipendente.cognome }}.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">Informazioni Personali</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" action="{{ url_for('admin_dipendente_edit', id=dipendente.id) }}">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nome"
+                                    class="form-label small text-uppercase fw-bold text-muted">Nome</label>
+                                <input type="text" class="form-control bg-light border-0" id="nome" name="nome"
+                                    value="{{ dipendente.nome }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="cognome"
+                                    class="form-label small text-uppercase fw-bold text-muted">Cognome</label>
+                                <input type="text" class="form-control bg-light border-0" id="cognome" name="cognome"
+                                    value="{{ dipendente.cognome }}" required>
+                            </div>
+                            <div class="col-12">
+                                <label for="email"
+                                    class="form-label small text-uppercase fw-bold text-muted">Email</label>
+                                <input type="email" class="form-control bg-light border-0" id="email" name="email"
+                                    value="{{ dipendente.email }}" required>
+                            </div>
+                            <div class="col-12">
+                                <label for="data_assunzione"
+                                    class="form-label small text-uppercase fw-bold text-muted">Data Assunzione</label>
+                                <input type="date" class="form-control bg-light border-0" id="data_assunzione"
+                                    name="data_assunzione" value="{{ dipendente.data_assunzione }}" required>
+                            </div>
+                            <div class="col-12">
+                                <label for="colore" class="form-label small text-uppercase fw-bold text-muted">Colore
+                                    Identificativo</label>
+                                <input type="color" class="form-control form-control-color bg-light border-0 w-100"
+                                    id="colore" name="colore" value="{{ dipendente.colore or '#4361ee' }}"
+                                    title="Scegli il colore del dipendente">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-5">
+                            <a href="{{ url_for('admin_dipendenti') }}" class="btn btn-light">
+                                <i class="fas fa-arrow-left me-2"></i>Indietro
+                            </a>
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fas fa-save me-2"></i>Salva Modifiche
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="d-flex flex-column gap-4 h-100">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0">Azioni Rapide</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-grid gap-3">
+                            <a href="{{ url_for('admin_report') }}?dipendente={{ dipendente.id }}"
+                                class="btn btn-outline-primary shadow-sm">
+                                <i class="fas fa-chart-line me-2"></i>Visualizza Report
+                            </a>
+                            <button type="button" class="btn btn-outline-danger shadow-sm" data-bs-toggle="modal"
+                                data-bs-target="#eliminaDipendenteModal">
+                                <i class="fas fa-trash-alt me-2"></i>Elimina Dipendente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm flex-grow-1">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0">Timbrature Recenti</h5>
+                    </div>
+                    <div class="card-body p-0" id="info-timbrature">
+                        <div class="text-center p-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Caricamento...</span>
+                            </div>
+                            <p class="mt-3 text-muted small">Caricamento dati...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="eliminaDipendenteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold text-danger">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="avatar-circle bg-danger-subtle text-danger mx-auto mb-3 d-flex align-items-center justify-content-center"
+                    style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <p class="mb-1">Sei sicuro di voler eliminare <strong>{{ dipendente.nome }} {{ dipendente.cognome
+                        }}</strong>?</p>
+                <p class="text-muted small">Questa azione è irreversibile e cancellerà tutte le timbrature associate.
+                </p>
+            </div>
+            <div class="modal-footer border-top-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger px-4" id="conferma-elimina">Elimina Definitivamente</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Gestione eliminazione dipendente
+        const eliminaModal = new bootstrap.Modal(document.getElementById('eliminaDipendenteModal'));
+
+        document.getElementById('conferma-elimina').addEventListener('click', function () {
+            fetch(`/admin/dipendente/{{ dipendente.id }}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        eliminaModal.hide();
+                        window.location.href = "{{ url_for('admin_dipendenti') }}";
+                    } else {
+                        alert('Si è verificato un errore durante l\'eliminazione del dipendente');
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore:', error);
+                    alert('Si è verificato un errore durante l\'eliminazione del dipendente');
+                });
+        });
+
+        // Carica info timbrature recenti
+        fetch(`/api/report/dipendente/{{ dipendente.id }}?periodo=settimana`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('info-timbrature');
+
+                if (data.timbrature.length === 0) {
+                    container.innerHTML = `
+                    <div class="text-center py-3">
+                        <p class="text-muted mb-0">Nessuna timbratura registrata nell'ultima settimana</p>
+                    </div>
+                `;
+                    return;
+                }
+
+                let html = `
+                <h6 class="mb-3">Timbrature Recenti</h6>
+                <ul class="list-group list-group-flush">
+            `;
+
+                for (let i = 0; i < Math.min(5, data.timbrature.length); i++) {
+                    const t = data.timbrature[i];
+                    const stato = t.fine ? 'Completata' : 'In corso';
+                    const statusClass = t.fine ? 'text-success' : 'text-primary';
+                    const ore = t.ore ? `<span class="badge bg-info">${t.ore} ore</span>` : '';
+
+                    html += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold">${t.data}</div>
+                            <small>${t.inizio} - ${t.fine || '---'}</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            ${ore}
+                            <span class="ms-2 ${statusClass}">${stato}</span>
+                        </div>
+                    </li>
+                `;
+                }
+
+                html += `</ul>`;
+
+                if (data.timbrature.length > 5) {
+                    html += `
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('admin_report') }}?dipendente={{ dipendente.id }}" class="btn btn-sm btn-outline-primary">
+                            Vedi tutte
+                        </a>
+                    </div>
+                `;
+                }
+
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento dei dati:', error);
+                document.getElementById('info-timbrature').innerHTML = `
+                <div class="text-center py-3">
+                    <p class="text-danger mb-0">Errore nel caricamento dei dati</p>
+                </div>
+            `;
+            });
+    });
+</script>
+{% endblock %}

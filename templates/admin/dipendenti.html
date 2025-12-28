@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestione Dipendenti{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1">Gestione Dipendenti</h1>
+            <p class="text-muted">Aggiungi, modifica o elimina i dipendenti nel sistema.</p>
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal"
+                data-bs-target="#aggiungiDipendenteModal">
+                <i class="fas fa-plus me-2"></i>Nuovo Dipendente
+            </button>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5 class="mb-0">Lista Dipendenti</h5>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i
+                                class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="cercaDipendente" class="form-control bg-light border-start-0 ps-0"
+                            placeholder="Cerca per nome o cognome...">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Dipendente</th>
+                            <th>Email</th>
+                            <th>Data Assunzione</th>
+                            <th class="text-end pe-4">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if dipendenti %}
+                        {% for dipendente in dipendenti %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle me-3 bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center"
+                                        style="width:40px; height:40px; border-radius:50%;">
+                                        {{ dipendente.nome[0] }}{{ dipendente.cognome[0] }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ dipendente.cognome }} {{ dipendente.nome }}
+                                        </div>
+                                        <div class="small text-muted">ID: {{ dipendente.id }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ dipendente.email }}</td>
+                            <td>{{ dipendente.data_assunzione }}</td>
+                            <td class="text-end pe-4">
+                                <a href="{{ url_for('admin_dipendente_edit', id=dipendente.id) }}"
+                                    class="btn btn-sm btn-light text-primary me-1" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-light text-danger btn-elimina"
+                                    data-id="{{ dipendente.id }}"
+                                    data-nome="{{ dipendente.nome }} {{ dipendente.cognome }}" title="Elimina">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="fas fa-users fa-3x mb-3 opacity-50"></i>
+                                    <p class="mb-0">Nessun dipendente registrato nel sistema</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi Dipendente -->
+<div class="modal fade" id="aggiungiDipendenteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold">Aggiungi Nuovo Dipendente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{{ url_for('admin_dipendente_add') }}">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="nome" class="form-label small text-uppercase fw-bold text-muted">Nome</label>
+                            <input type="text" class="form-control bg-light border-0" id="nome" name="nome" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cognome"
+                                class="form-label small text-uppercase fw-bold text-muted">Cognome</label>
+                            <input type="text" class="form-control bg-light border-0" id="cognome" name="cognome"
+                                required>
+                        </div>
+                        <div class="col-12">
+                            <label for="email" class="form-label small text-uppercase fw-bold text-muted">Email</label>
+                            <input type="email" class="form-control bg-light border-0" id="email" name="email" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="data_assunzione" class="form-label small text-uppercase fw-bold text-muted">Data
+                                Assunzione</label>
+                            <input type="date" class="form-control bg-light border-0" id="data_assunzione"
+                                name="data_assunzione" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="colore" class="form-label small text-uppercase fw-bold text-muted">Colore
+                                Identificativo</label>
+                            <input type="color" class="form-control form-control-color bg-light border-0 w-100"
+                                id="colore" name="colore" value="#4361ee" title="Scegli il colore del dipendente">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary px-4">Salva Dipendente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="eliminaDipendenteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold text-danger">Conferma Eliminazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="avatar-circle bg-danger-subtle text-danger mx-auto mb-3 d-flex align-items-center justify-content-center"
+                    style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <p class="mb-1">Sei sicuro di voler eliminare <strong id="elimina-nome"></strong>?</p>
+                <p class="text-muted small">Questa azione è irreversibile e cancellerà tutte le timbrature associate.
+                </p>
+            </div>
+            <div class="modal-footer border-top-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger px-4" id="conferma-elimina">Elimina Definitivamente</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Imposta la data di oggi come valore di default per il campo data assunzione
+        document.getElementById('data_assunzione').valueAsDate = new Date();
+
+        // Funzione di ricerca nella tabella
+        document.getElementById('cercaDipendente').addEventListener('keyup', function () {
+            const query = this.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Gestione eliminazione dipendente
+        let dipendenteId = null;
+        const eliminaModal = new bootstrap.Modal(document.getElementById('eliminaDipendenteModal'));
+
+        document.querySelectorAll('.btn-elimina').forEach(button => {
+            button.addEventListener('click', function () {
+                dipendenteId = this.dataset.id;
+                document.getElementById('elimina-nome').textContent = this.dataset.nome;
+                eliminaModal.show();
+            });
+        });
+
+        document.getElementById('conferma-elimina').addEventListener('click', function () {
+            if (!dipendenteId) return;
+
+            fetch(`/admin/dipendente/${dipendenteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        eliminaModal.hide();
+                        window.location.reload();
+                    } else {
+                        alert('Si è verificato un errore durante l\'eliminazione del dipendente');
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore:', error);
+                    alert('Si è verificato un errore durante l\'eliminazione del dipendente');
+                });
+        });
+    });
+</script>
+{% endblock %}

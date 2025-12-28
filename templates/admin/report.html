@@ -1,0 +1,834 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Timbrature{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1">Report Timbrature</h1>
+            <p class="text-muted">Analisi dettagliata delle presenze e delle ore lavorate</p>
+        </div>
+        <div class="d-flex gap-2">
+            <select class="form-select" id="periodo" style="width: auto;">
+                <option value="settimana">Ultima Settimana</option>
+                <option value="mese" selected>Ultimo Mese</option>
+                <option value="mese_specifico">Mese Specifico</option>
+                <option value="anno">Ultimo Anno</option>
+            </select>
+            <select class="form-select d-none" id="mese_specifico_select" style="width: auto;">
+                <option value="1">Gennaio</option>
+                <option value="2">Febbraio</option>
+                <option value="3">Marzo</option>
+                <option value="4">Aprile</option>
+                <option value="5">Maggio</option>
+                <option value="6">Giugno</option>
+                <option value="7">Luglio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Settembre</option>
+                <option value="10">Ottobre</option>
+                <option value="11">Novembre</option>
+                <option value="12">Dicembre</option>
+            </select>
+            <select class="form-select" id="anno" style="width: auto;">
+                <!-- Populated dynamically -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Filters & Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <label for="dipendente"
+                        class="form-label text-muted small text-uppercase fw-bold">Dipendente</label>
+                    <select class="form-select border-0 bg-light" id="dipendente">
+                        <option value="tutti" selected>Tutti i Dipendenti</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="card h-100 border-0 shadow-sm bg-primary text-white">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="text-white-50 text-uppercase small fw-bold mb-2">Ore Totali</h6>
+                    <h2 class="mb-0" id="kpi-ore-totali">-</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-2">Media Giornaliera</h6>
+                    <h2 class="mb-0 text-primary" id="kpi-media-giornaliera">-</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-2">Giorni Lavorati</h6>
+                    <h2 class="mb-0 text-success" id="kpi-giorni-lavorati">-</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Charts Row -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4 mb-lg-0">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                    <h5 class="mb-0">Andamento Ore</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-light text-dark active"
+                            data-view="bar">Barre</button>
+                        <button type="button" class="btn btn-outline-light text-dark" data-view="line">Linea</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Distribuzione</h5>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div class="chart-container" style="height: 300px; width: 100%;">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4 mb-md-0">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Ore per Dipendente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="employeeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Confronto Mensile</h5>
+                    <select id="confronto-periodo" class="form-select form-select-sm border-0 bg-light"
+                        style="width: auto;">
+                        <option value="mese">Ultimo Mese</option>
+                        <option value="anno">Anno Corrente</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Table Section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap py-3">
+            <div>
+                <h5 class="mb-0">Dettaglio Timbrature</h5>
+                <small class="text-muted" id="dettaglio-titolo">Visualizzazione dettagliata</small>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                <select id="mese-export" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">Seleziona mese...</option>
+                    <option value="01">Gennaio</option>
+                    <option value="02">Febbraio</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Aprile</option>
+                    <option value="05">Maggio</option>
+                    <option value="06">Giugno</option>
+                    <option value="07">Luglio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Settembre</option>
+                    <option value="10">Ottobre</option>
+                    <option value="11">Novembre</option>
+                    <option value="12">Dicembre</option>
+                </select>
+                <button id="export-timbrature" class="btn btn-sm btn-primary" disabled>
+                    <i class="fas fa-download me-1"></i> Esporta CSV
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0" id="timbrature-container">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Caricamento...</span>
+                </div>
+                <p class="mt-2 text-muted">Caricamento dati in corso...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Timbratura -->
+<div class="modal fade" id="modificaTimbraturaModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold">Modifica Timbratura</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formModificaTimbratura">
+                    <input type="hidden" id="edit-id">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label for="edit-data" class="form-label small text-muted text-uppercase fw-bold">Data
+                                Inizio</label>
+                            <input type="date" class="form-control bg-light border-0" id="edit-data" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="edit-data-fine" class="form-label small text-muted text-uppercase fw-bold">Data
+                                Fine</label>
+                            <input type="date" class="form-control bg-light border-0" id="edit-data-fine">
+                        </div>
+                        <div class="col-6">
+                            <label for="edit-inizio" class="form-label small text-muted text-uppercase fw-bold">Ora
+                                Inizio</label>
+                            <input type="time" class="form-control bg-light border-0" id="edit-inizio" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="edit-fine" class="form-label small text-muted text-uppercase fw-bold">Ora
+                                Fine</label>
+                            <input type="time" class="form-control bg-light border-0" id="edit-fine">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary px-4" id="salva-modifica">Salva Modifiche</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Chart Instances
+        let mainChart, distributionChart, employeeChart, comparisonChart;
+
+        // State
+        let state = {
+            dipendente: 'tutti',
+            periodo: 'mese',
+            anno: new Date().getFullYear(),
+            mese: new Date().getMonth() + 1,
+            confrontoPeriodo: 'mese',
+            meseExport: ''
+        };
+
+        // Initialize UI
+        initializeYearSelect();
+        // Set current month in select
+        document.getElementById('mese_specifico_select').value = state.mese;
+
+        loadEmployees();
+        setupEventListeners();
+        updateDashboard();
+
+        // --- Initialization Functions ---
+
+        function initializeYearSelect() {
+            const annoSelect = document.getElementById('anno');
+            const currentYear = new Date().getFullYear();
+            for (let i = 0; i < 5; i++) {
+                const year = currentYear - i;
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                annoSelect.appendChild(option);
+            }
+        }
+
+        function loadEmployees() {
+            fetch('/api/stato-dipendenti')
+                .then(res => res.json())
+                .then(data => {
+                    const select = document.getElementById('dipendente');
+                    data.sort((a, b) => a.cognome.localeCompare(b.cognome));
+
+                    data.forEach(dip => {
+                        const option = document.createElement('option');
+                        option.value = dip.id;
+                        option.textContent = `${dip.cognome} ${dip.nome}`;
+                        select.appendChild(option);
+                    });
+
+                    // Check URL params
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.has('dipendente')) {
+                        state.dipendente = urlParams.get('dipendente');
+                        select.value = state.dipendente;
+                        updateDashboard();
+                    }
+                });
+        }
+
+        function setupEventListeners() {
+            document.getElementById('periodo').addEventListener('change', (e) => {
+                state.periodo = e.target.value;
+
+                // Show/Hide month select
+                const monthSelect = document.getElementById('mese_specifico_select');
+                if (state.periodo === 'mese_specifico') {
+                    monthSelect.classList.remove('d-none');
+                } else {
+                    monthSelect.classList.add('d-none');
+                }
+
+                updateDashboard();
+            });
+
+            document.getElementById('mese_specifico_select').addEventListener('change', (e) => {
+                state.mese = e.target.value;
+                updateDashboard();
+            });
+
+            document.getElementById('anno').addEventListener('change', (e) => {
+                state.anno = e.target.value;
+                updateDashboard();
+            });
+
+            document.getElementById('dipendente').addEventListener('change', (e) => {
+                state.dipendente = e.target.value;
+                updateDashboard();
+            });
+
+            document.getElementById('confronto-periodo').addEventListener('change', (e) => {
+                state.confrontoPeriodo = e.target.value;
+                loadComparisonData();
+            });
+
+            // Export logic
+            document.getElementById('mese-export').addEventListener('change', (e) => {
+                state.meseExport = e.target.value;
+                document.getElementById('export-timbrature').disabled = !state.meseExport;
+            });
+
+            document.getElementById('export-timbrature').addEventListener('click', () => {
+                if (state.meseExport) exportTimbrature(state.meseExport);
+            });
+
+            // Modal logic
+            setupModalLogic();
+        }
+
+        // --- Main Update Function ---
+
+        function updateDashboard() {
+            loadMainChartData();
+            loadDistributionData();
+            loadEmployeeStats();
+            loadComparisonData();
+            loadTableData();
+        }
+
+        // --- Data Loading & Charts ---
+
+        function loadMainChartData() {
+            // Logic to fetch data for the main chart (Timeline)
+            // This combines previous "Ore Mensili" and "Distribuzione" concepts based on selection
+            const url = state.dipendente === 'tutti'
+                ? `/api/report/totale?periodo=${state.periodo}&anno=${state.anno}&mese=${state.mese}` // Fallback/Proxy
+                : `/api/report/mensile?dipendente=${state.dipendente}&anno=${state.anno}&mese=${state.mese}`;
+
+            // Note: For a real robust implementation, we might need better API endpoints.
+            // Here we reuse existing ones and adapt the chart.
+
+            // For simplicity in this redesign, let's use the "Ore Mensili" endpoint structure 
+            // but visualize it better.
+
+            const endpoint = `/api/report/mensile?dipendente=${state.dipendente}&anno=${state.anno}&mese=${state.mese}&periodo=${state.periodo}`;
+
+            fetch(endpoint)
+                .then(res => res.json())
+                .then(data => {
+                    const ctx = document.getElementById('mainChart').getContext('2d');
+                    if (mainChart) mainChart.destroy();
+
+                    mainChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Ore Lavorate',
+                                data: data.data,
+                                backgroundColor: '#4361ee',
+                                borderRadius: 4,
+                                barThickness: 20
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#2b2d42',
+                                    padding: 12,
+                                    titleFont: { size: 13 },
+                                    bodyFont: { size: 13 },
+                                    cornerRadius: 8,
+                                    displayColors: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { borderDash: [2, 4], color: '#e9ecef' },
+                                    ticks: { font: { family: 'Inter' } }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { font: { family: 'Inter' } }
+                                }
+                            }
+                        }
+                    });
+
+                    // Update KPI: Ore Totali (Sum of data)
+                    const totalHours = data.data.reduce((a, b) => a + b, 0);
+                    document.getElementById('kpi-ore-totali').textContent = totalHours.toFixed(1);
+
+                    // Update KPI: Media Giornaliera (Approximate)
+                    // This is a rough estimate as we don't have exact working days count here easily without more data
+                    // We will update this more accurately in loadTableData if possible, or leave as estimate
+                    const workedMonths = data.data.filter(x => x > 0).length;
+                    const avg = workedMonths > 0 ? (totalHours / workedMonths).toFixed(1) : '0.0';
+                    // document.getElementById('kpi-media-giornaliera').textContent = avg + ' (mese)'; 
+                });
+        }
+
+        function loadDistributionData() {
+            // Use existing distribution endpoint
+            const url = `/api/report/distribuzione?periodo=${state.periodo}&dipendente=${state.dipendente}&anno=${state.anno}&mese=${state.mese}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    const ctx = document.getElementById('distributionChart').getContext('2d');
+                    if (distributionChart) distributionChart.destroy();
+
+                    distributionChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                data: data.data,
+                                backgroundColor: [
+                                    '#4361ee', '#3f37c9', '#4cc9f0', '#4895ef', '#560bad', '#7209b7', '#f72585'
+                                ],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
+                            },
+                            cutout: '70%'
+                        }
+                    });
+                });
+        }
+
+        function loadEmployeeStats() {
+            const url = `/api/report/totale?periodo=${state.periodo}&anno=${state.anno}&mese=${state.mese}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (state.dipendente !== 'tutti') {
+                        data = data.filter(d => d.id == state.dipendente);
+                    }
+
+                    data.sort((a, b) => b.ore_totali - a.ore_totali);
+                    const labels = data.map(d => `${d.cognome} ${d.nome}`);
+                    const values = data.map(d => d.ore_totali);
+
+                    const ctx = document.getElementById('employeeChart').getContext('2d');
+                    if (employeeChart) employeeChart.destroy();
+
+                    employeeChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Ore',
+                                data: values,
+                                backgroundColor: '#4cc9f0',
+                                borderRadius: 4,
+                                barThickness: 15
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { borderDash: [2, 4] } },
+                                y: { grid: { display: false } }
+                            }
+                        }
+                    });
+                });
+        }
+
+        function loadComparisonData() {
+            const url = `/api/report/confronto?periodo=${state.confrontoPeriodo}&anno=${state.anno}&mese=${state.mese}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    const ctx = document.getElementById('comparisonChart').getContext('2d');
+                    if (comparisonChart) comparisonChart.destroy();
+
+                    comparisonChart = new Chart(ctx, {
+                        type: state.confrontoPeriodo === 'mese' ? 'bar' : 'line',
+                        data: {
+                            labels: data.labels,
+                            datasets: data.datasets.map((ds, i) => ({
+                                ...ds,
+                                backgroundColor: i === 0 ? '#4361ee' : '#f72585',
+                                borderColor: i === 0 ? '#4361ee' : '#f72585',
+                                tension: 0.4
+                            }))
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'top', align: 'end', labels: { usePointStyle: true } }
+                            },
+                            scales: {
+                                y: { grid: { borderDash: [2, 4] } },
+                                x: { grid: { display: false } }
+                            }
+                        }
+                    });
+                });
+        }
+
+        function loadTableData() {
+            const container = document.getElementById('timbrature-container');
+            container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Caricamento dati...</p></div>`;
+
+            // Determine title
+            const titolo = document.getElementById('dettaglio-titolo');
+            if (state.periodo === 'mese_specifico') {
+                const meseNome = document.getElementById('mese_specifico_select').options[state.mese - 1].text;
+                titolo.textContent = `${meseNome} ${state.anno}`;
+            } else {
+                titolo.textContent = state.periodo === 'mese' ? 'Ultimo Mese' : (state.periodo === 'settimana' ? 'Ultima Settimana' : `Anno ${state.anno}`);
+            }
+
+            // Fetch logic (similar to original but cleaner)
+            let promise;
+            if (state.dipendente === 'tutti') {
+                promise = fetch('/api/stato-dipendenti')
+                    .then(res => res.json())
+                    .then(dipendenti => {
+                        const promises = dipendenti.map(dip =>
+                            fetch(`/api/report/dipendente/${dip.id}?periodo=${state.periodo}&anno=${state.anno}&mese=${state.mese}`).then(r => r.json())
+                        );
+                        return Promise.all(promises).then(results => {
+                            let all = [];
+                            results.forEach(res => {
+                                if (res.timbrature) {
+                                    res.timbrature.forEach(t => all.push({ ...t, nome: res.nome, cognome: res.cognome }));
+                                }
+                            });
+                            return all;
+                        });
+                    });
+            } else {
+                promise = fetch(`/api/report/dipendente/${state.dipendente}?periodo=${state.periodo}&anno=${state.anno}&mese=${state.mese}`)
+                    .then(res => res.json())
+                    .then(data => data.timbrature.map(t => ({ ...t, nome: data.nome, cognome: data.cognome })));
+            }
+
+            promise.then(timbrature => {
+                // Sort by date desc
+                timbrature.sort((a, b) => {
+                    const da = new Date(a.data.split('/').reverse().join('-') + ' ' + a.inizio);
+                    const db = new Date(b.data.split('/').reverse().join('-') + ' ' + b.inizio);
+                    return db - da;
+                });
+
+                renderTable(timbrature);
+                updateTableKPIs(timbrature);
+            }).catch(err => {
+                console.error(err);
+                container.innerHTML = `<div class="text-center text-danger py-4">Errore nel caricamento dei dati</div>`;
+            });
+        }
+
+        function renderTable(timbrature) {
+            const container = document.getElementById('timbrature-container');
+            if (timbrature.length === 0) {
+                container.innerHTML = `<div class="text-center py-5 text-muted">Nessun dato trovato</div>`;
+                return;
+            }
+
+            // Group by Month
+            const groups = {};
+            timbrature.forEach(t => {
+                const [day, month, year] = t.data.split('/');
+                const key = `${year}-${month}`;
+                if (!groups[key]) groups[key] = { timbrature: [], totalHours: 0, monthName: getMonthName(month), year: year };
+                groups[key].timbrature.push(t);
+                if (t.ore) groups[key].totalHours += parseFloat(t.ore);
+            });
+
+            // Sort groups descending
+            const sortedKeys = Object.keys(groups).sort().reverse();
+
+            let html = '<div class="accordion accordion-flush" id="accordionTimbrature">';
+
+            sortedKeys.forEach((key, index) => {
+                const group = groups[key];
+                const collapseId = `flush-collapse-${index}`;
+                const headingId = `flush-heading-${index}`;
+                const isExpanded = index === 0 ? 'show' : ''; // Open first by default
+                const buttonClass = index === 0 ? '' : 'collapsed';
+
+                html += `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="${headingId}">
+                            <button class="accordion-button ${buttonClass} bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${index === 0}" aria-controls="${collapseId}">
+                                <div class="d-flex justify-content-between w-100 me-3 align-items-center">
+                                    <span class="fw-bold text-dark">${group.monthName} ${group.year}</span>
+                                    <span class="badge bg-primary rounded-pill">Ore Totali: ${group.totalHours.toFixed(2)}</span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="${collapseId}" class="accordion-collapse collapse ${isExpanded}" aria-labelledby="${headingId}" data-bs-parent="#accordionTimbrature">
+                            <div class="accordion-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0 align-middle">
+                                        <thead class="bg-white border-bottom">
+                                            <tr>
+                                                <th class="ps-4">Data</th>
+                                                <th>Dipendente</th>
+                                                <th>Entrata</th>
+                                                <th>Uscita</th>
+                                                <th>Ore</th>
+                                                <th>Stato</th>
+                                                <th class="text-end pe-4">Azioni</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${group.timbrature.map(t => `
+                                                <tr class="${(t.ore && t.ore > 11) ? 'table-danger' : (t.ore && t.ore > 9) ? 'table-warning' : ''}">
+                                                    <td class="ps-4 fw-medium">${t.data}</td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar-circle me-2 bg-light text-primary fw-bold d-flex align-items-center justify-content-center" style="width:32px; height:32px; border-radius:50%; font-size:0.8rem;">
+                                                                ${t.nome.charAt(0)}${t.cognome.charAt(0)}
+                                                            </div>
+                                                            <div>${t.cognome} ${t.nome}</div>
+                                                        </div>
+                                                    </td>
+                                                    <td>${t.inizio}</td>
+                                                    <td>${t.fine || '-'}</td>
+                                                    <td><span class="badge bg-light text-dark border">${t.ore ? formatHHMM(t.ore) : '-'}</span></td>
+                                                    <td>
+                                                        <span class="badge ${t.fine ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} rounded-pill">
+                                                            ${t.fine ? 'Completato' : 'In Corso'}
+                                                        </span>
+                                                        ${(t.ore && t.ore > 11) ? '<span class="badge bg-danger ms-1" title="Superate 11 ore!"><i class="fas fa-exclamation-triangle"></i> >11h</span>' : ''}
+                                                        ${(t.ore && t.ore > 9 && t.ore <= 11) ? '<span class="badge bg-warning text-dark ms-1" title="Superate 9 ore!"><i class="fas fa-exclamation"></i> >9h</span>' : ''}
+                                                    </td>
+                                                    <td class="text-end pe-4">
+                                                        <button class="btn btn-sm btn-light text-primary me-1" onclick="apriModifica('${t.id}', '${t.data}', '${t.inizio}', '${t.fine || ''}')">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-light text-danger" onclick="confermaEliminaTimbratura('${t.id}')">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // --- Helper Functions ---
+
+        function getMonthName(monthStr) {
+            const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+                "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+            return months[parseInt(monthStr) - 1];
+        }
+
+        function formatHHMM(decimalHours) {
+            const hours = Math.floor(decimalHours);
+            const minutes = Math.round((decimalHours - hours) * 60);
+            return `${hours}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        function updateTableKPIs(timbrature) {
+            // Calculate KPIs based on the filtered data
+            const totalHours = timbrature.reduce((acc, t) => acc + (t.ore || 0), 0);
+            const uniqueDays = new Set(timbrature.map(t => t.data)).size;
+
+            // Update KPIs in the UI if they are not already updated by main chart logic
+            // Note: Main chart logic updates global KPIs based on API. 
+            // Table KPIs might be slightly different if we filter client-side, but here we fetch what we show.
+            // Let's update the "Giorni Lavorati" which is more accurate here
+            document.getElementById('kpi-giorni-lavorati').textContent = uniqueDays;
+
+            // Recalculate average daily hours based on actual days worked
+            const avg = uniqueDays > 0 ? (totalHours / uniqueDays).toFixed(1) : '0.0';
+            document.getElementById('kpi-media-giornaliera').textContent = avg;
+        }
+
+        function exportTimbrature(month) {
+            // Implementation for CSV export
+            // This would typically trigger a download from a specific API endpoint
+            // For now, let's just alert
+            alert(`Funzionalità di esportazione per il mese ${month} in arrivo!`);
+        }
+
+        // --- Modal Logic ---
+
+        function setupModalLogic() {
+            const modificaModal = new bootstrap.Modal(document.getElementById('modificaTimbraturaModal'));
+            const deleteModal = new bootstrap.Modal(document.getElementById('eliminaTimbraturaModal'));
+            let currentDeleteId = null;
+
+            window.apriModifica = function (id, data, inizio, fine) {
+                document.getElementById('edit-id').value = id;
+
+                // Convert DD/MM/YYYY to YYYY-MM-DD
+                const [day, month, year] = data.split('/');
+                document.getElementById('edit-data').value = `${year}-${month}-${day}`;
+
+                // If fine is present, it might be on a different day, but for now assume same day or handle logic
+                // The API expects start date and end date. 
+                // Simple assumption: same day for start. End date might be same or next.
+                // For simplicity in UI, we show start date. 
+                // If we want to support cross-day edits, we need 'edit-data-fine'.
+                document.getElementById('edit-data-fine').value = `${year}-${month}-${day}`; // Default to same day
+
+                document.getElementById('edit-inizio').value = inizio.substring(0, 5);
+                document.getElementById('edit-fine').value = fine ? fine.substring(0, 5) : '';
+
+                modificaModal.show();
+            };
+
+            window.confermaEliminaTimbratura = function (id) {
+                currentDeleteId = id;
+                deleteModal.show();
+            };
+
+            document.getElementById('salva-modifica').addEventListener('click', () => {
+                const id = document.getElementById('edit-id').value;
+                const dataInizio = document.getElementById('edit-data').value;
+                const dataFine = document.getElementById('edit-data-fine').value;
+                const inizio = document.getElementById('edit-inizio').value;
+                const fine = document.getElementById('edit-fine').value;
+
+                fetch(`/api/timbratura/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        data: dataInizio,
+                        data_fine: dataFine,
+                        inizio: inizio,
+                        fine: fine
+                    })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            modificaModal.hide();
+                            updateDashboard(); // Reload data
+                        } else {
+                            alert('Errore: ' + data.error);
+                        }
+                    });
+            });
+
+            document.getElementById('conferma-elimina-timbratura').addEventListener('click', () => {
+                if (!currentDeleteId) return;
+
+                fetch(`/api/timbratura/${currentDeleteId}`, {
+                    method: 'DELETE'
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            deleteModal.hide();
+                            updateDashboard(); // Reload data
+                        } else {
+                            alert('Errore durante l\'eliminazione: ' + (data.error || 'Errore sconosciuto'));
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Errore di connessione');
+                    });
+            });
+        }
+    });
+</script>
+<!-- Modal Conferma Eliminazione Timbratura -->
+<div class="modal fade" id="eliminaTimbraturaModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold text-danger">Elimina Timbratura</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="avatar-circle bg-danger-subtle text-danger mx-auto mb-3 d-flex align-items-center justify-content-center"
+                    style="width: 64px; height: 64px; border-radius: 50%; font-size: 1.5rem;">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <p class="mb-1">Sei sicuro di voler eliminare questa timbratura?</p>
+                <p class="text-muted small">Questa azione è irreversibile.</p>
+            </div>
+            <div class="modal-footer border-top-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger px-4" id="conferma-elimina-timbratura">Elimina</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
