@@ -93,6 +93,45 @@
     </div>
 </div>
 
+<!-- Sezione Utenti Nascosti (Viewer) -->
+{% if viewer_users %}
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-warning-subtle py-3">
+        <h5 class="mb-0 text-warning-emphasis"><i class="fas fa-user-secret me-2"></i>Utenti "Soldati Nascosti"</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Username</th>
+                        <th>Ruolo</th>
+                        <th class="text-end pe-4">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in viewer_users %}
+                    <tr>
+                        <td class="ps-4 fw-bold">{{ user.username }}</td>
+                        <td><span class="badge bg-warning text-dark">Accesso Home</span></td>
+                        <td class="text-end pe-4">
+                            <!-- Nota: Usiamo una classe diversa per il delete degli utenti admin -->
+                            <button type="button" class="btn btn-sm btn-light text-danger btn-elimina-user"
+                                data-id="{{ user.id }}" data-username="{{ user.username }}" title="Elimina">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+</div>
+
 <!-- Modal Aggiungi Dipendente -->
 <div class="modal fade" id="aggiungiDipendenteModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -103,32 +142,72 @@
             </div>
             <form method="post" action="{{ url_for('admin_dipendente_add') }}">
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="mb-3 form-check form-switch p-3 bg-warning-subtle rounded border border-warning-subtle">
+                        <input class="form-check-input" type="checkbox" role="switch" id="is_hidden" name="is_hidden">
+                        <label class="form-check-label fw-bold text-dark" for="is_hidden">
+                            <i class="fas fa-user-secret me-2"></i>Utente "Soldato Nascosto" (Solo Accesso Home)
+                        </label>
+                        <div class="form-text text-muted small mt-1">Se attivo, l'utente potrà loggarsi e vedere la
+                            home, ma non apparirà nella lista timbrature.</div>
+                    </div>
+
+                    <!-- Campi Dipendente Standard -->
+                    <div id="standard-fields" class="row g-3">
                         <div class="col-md-6">
                             <label for="nome" class="form-label small text-uppercase fw-bold text-muted">Nome</label>
-                            <input type="text" class="form-control bg-light border-0" id="nome" name="nome" required>
+                            <input type="text" class="form-control bg-light border-0" id="nome" name="nome">
                         </div>
                         <div class="col-md-6">
                             <label for="cognome"
                                 class="form-label small text-uppercase fw-bold text-muted">Cognome</label>
-                            <input type="text" class="form-control bg-light border-0" id="cognome" name="cognome"
-                                required>
+                            <input type="text" class="form-control bg-light border-0" id="cognome" name="cognome">
                         </div>
                         <div class="col-12">
                             <label for="email" class="form-label small text-uppercase fw-bold text-muted">Email</label>
-                            <input type="email" class="form-control bg-light border-0" id="email" name="email" required>
+                            <input type="email" class="form-control bg-light border-0" id="email" name="email">
                         </div>
                         <div class="col-12">
                             <label for="data_assunzione" class="form-label small text-uppercase fw-bold text-muted">Data
                                 Assunzione</label>
                             <input type="date" class="form-control bg-light border-0" id="data_assunzione"
-                                name="data_assunzione" required>
+                                name="data_assunzione">
                         </div>
                         <div class="col-12">
                             <label for="colore" class="form-label small text-uppercase fw-bold text-muted">Colore
                                 Identificativo</label>
                             <input type="color" class="form-control form-control-color bg-light border-0 w-100"
                                 id="colore" name="colore" value="#4361ee" title="Scegli il colore del dipendente">
+                        </div>
+                    </div>
+
+                    <!-- Campi Utente Nascosto -->
+                    <div id="hidden-fields" class="row g-3 d-none">
+                        <div class="col-12 mb-3">
+                            <div class="alert alert-info border-0 shadow-sm mb-0">
+                                <small><i class="fas fa-info-circle me-1"></i> Stai creando un account di accesso per la
+                                    dashboard (Ruolo: Dipendente). Non sarà possibile registrare presenze per questo
+                                    account.</small>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="username"
+                                class="form-label small text-uppercase fw-bold text-muted">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i
+                                        class="fas fa-user text-muted"></i></span>
+                                <input type="text" class="form-control bg-light border-start-0 ps-0" id="username"
+                                    name="username" placeholder="Es. dipendenti_home">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="password"
+                                class="form-label small text-uppercase fw-bold text-muted">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i
+                                        class="fas fa-lock text-muted"></i></span>
+                                <input type="password" class="form-control bg-light border-start-0 ps-0" id="password"
+                                    name="password">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -170,13 +249,43 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Imposta la data di oggi come valore di default per il campo data assunzione
-        document.getElementById('data_assunzione').valueAsDate = new Date();
+        // Toggle Fields Logic
+        const isHiddenCheckbox = document.getElementById('is_hidden');
+        const standardFields = document.getElementById('standard-fields');
+        const hiddenFields = document.getElementById('hidden-fields');
+
+        // Inputs to toggle required attribute
+        const stdInputs = standardFields.querySelectorAll('input');
+        const hiddenInputs = hiddenFields.querySelectorAll('input');
+
+        function toggleFields() {
+            if (isHiddenCheckbox.checked) {
+                standardFields.classList.add('d-none');
+                hiddenFields.classList.remove('d-none');
+
+                stdInputs.forEach(i => i.removeAttribute('required'));
+                hiddenInputs.forEach(i => i.setAttribute('required', ''));
+            } else {
+                standardFields.classList.remove('d-none');
+                hiddenFields.classList.add('d-none');
+
+                stdInputs.forEach(i => i.setAttribute('required', ''));
+                hiddenInputs.forEach(i => i.removeAttribute('required'));
+            }
+        }
+
+        isHiddenCheckbox.addEventListener('change', toggleFields);
+        // Init state
+        toggleFields();
+        // Also set default date if visible
+        if (document.getElementById('data_assunzione')) {
+            document.getElementById('data_assunzione').valueAsDate = new Date();
+        }
 
         // Funzione di ricerca nella tabella
         document.getElementById('cercaDipendente').addEventListener('keyup', function () {
             const query = this.value.toLowerCase();
-            const rows = document.querySelectorAll('tbody tr');
+            const rows = document.querySelectorAll('.card:first-of-type tbody tr'); // Target only first table
 
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
@@ -188,14 +297,26 @@
             });
         });
 
-        // Gestione eliminazione dipendente
+        // Gestione eliminazione dipendente (STANDARD)
         let dipendenteId = null;
+        let deleteType = null; // 'standard' or 'user'
         const eliminaModal = new bootstrap.Modal(document.getElementById('eliminaDipendenteModal'));
 
         document.querySelectorAll('.btn-elimina').forEach(button => {
             button.addEventListener('click', function () {
                 dipendenteId = this.dataset.id;
+                deleteType = 'standard';
                 document.getElementById('elimina-nome').textContent = this.dataset.nome;
+                eliminaModal.show();
+            });
+        });
+
+        // Gestione eliminazione USER (HIDDEN)
+        document.querySelectorAll('.btn-elimina-user').forEach(button => {
+            button.addEventListener('click', function () {
+                dipendenteId = this.dataset.id;
+                deleteType = 'user';
+                document.getElementById('elimina-nome').textContent = "Utente: " + this.dataset.username;
                 eliminaModal.show();
             });
         });
@@ -203,7 +324,14 @@
         document.getElementById('conferma-elimina').addEventListener('click', function () {
             if (!dipendenteId) return;
 
-            fetch(`/admin/dipendente/${dipendenteId}`, {
+            let endpoint = '';
+            if (deleteType === 'standard') {
+                endpoint = `/admin/dipendente/${dipendenteId}`;
+            } else {
+                endpoint = `/admin/user/${dipendenteId}`;
+            }
+
+            fetch(endpoint, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -215,12 +343,12 @@
                         eliminaModal.hide();
                         window.location.reload();
                     } else {
-                        alert('Si è verificato un errore durante l\'eliminazione del dipendente');
+                        alert('Si è verificato un errore durante l\'eliminazione');
                     }
                 })
                 .catch(error => {
                     console.error('Errore:', error);
-                    alert('Si è verificato un errore durante l\'eliminazione del dipendente');
+                    alert('Si è verificato un errore durante l\'eliminazione');
                 });
         });
     });

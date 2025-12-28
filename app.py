@@ -242,34 +242,69 @@ def admin_dashboard():
 def admin_dipendenti():
     db = get_db()
     dipendenti = db.execute('SELECT * FROM dipendenti ORDER BY cognome, nome').fetchall()
-    return render_template('admin/dipendenti.html', dipendenti=dipendenti)
+    # Recupera anche gli utenti "hidden soldier" (ruolo dipendente ma non admin)
+    viewer_users = db.execute("SELECT * FROM admin WHERE role = 'dipendente' ORDER BY username").fetchall()
+    return render_template('admin/dipendenti.html', dipendenti=dipendenti, viewer_users=viewer_users)
 
 @app.route('/admin/dipendente', methods=['POST'])
 @login_required
 @admin_required
 def admin_dipendente_add():
-    nome = request.form.get('nome')
-    cognome = request.form.get('cognome')
-    email = request.form.get('email')
-    data_assunzione = request.form.get('data_assunzione')
-    colore = request.form.get('colore', '#4361ee')
-    
-    if not all([nome, cognome, email, data_assunzione]):
-        flash('Tutti i campi sono obbligatori', 'error')
-        return redirect(url_for('admin_dipendenti'))
-    
+    is_hidden = request.form.get('is_hidden') == 'on'
     db = get_db()
-    try:
-        db.execute(
-            'INSERT INTO dipendenti (nome, cognome, email, data_assunzione, colore) VALUES (?, ?, ?, ?, ?)',
-            (nome, cognome, email, data_assunzione, colore)
-        )
-        db.commit()
-        flash('Dipendente aggiunto con successo', 'success')
-    except sqlite3.IntegrityError:
-        flash('Email già in uso', 'error')
+    
+    if is_hidden:
+        # Creazione Utente "Hidden Soldier" (Admin table)
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not all([username, password]):
+             flash('Username e Password sono obbligatori per il soldato nascosto', 'error')
+             return redirect(url_for('admin_dipendenti'))
+             
+        try:
+            hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+            db.execute(
+                "INSERT INTO admin (username, password, role) VALUES (?, ?, ?)",
+                (username, hashed_password, 'dipendente')
+            )
+            db.commit()
+            flash('Utente "Nascosto" creato con successo', 'success')
+        except sqlite3.IntegrityError:
+            flash('Username già in uso', 'error')
+            
+    else:
+        # Creazione Dipendente Standard
+        nome = request.form.get('nome')
+        cognome = request.form.get('cognome')
+        email = request.form.get('email')
+        data_assunzione = request.form.get('data_assunzione')
+        colore = request.form.get('colore', '#4361ee')
+        
+        if not all([nome, cognome, email, data_assunzione]):
+            flash('Tutti i campi sono obbligatori', 'error')
+            return redirect(url_for('admin_dipendenti'))
+        
+        try:
+            db.execute(
+                'INSERT INTO dipendenti (nome, cognome, email, data_assunzione, colore) VALUES (?, ?, ?, ?, ?)',
+                (nome, cognome, email, data_assunzione, colore)
+            )
+            db.commit()
+            flash('Dipendente aggiunto con successo', 'success')
+        except sqlite3.IntegrityError:
+            flash('Email già in uso', 'error')
     
     return redirect(url_for('admin_dipendenti'))
+
+@app.route('/admin/user/<int:id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_user_delete(id):
+    db = get_db()
+    db.execute('DELETE FROM admin WHERE id = ? AND role = ?', (id, 'dipendente'))
+    db.commit()
+    return jsonify({'success': True})
 
 @app.route('/admin/dipendente/<int:id>', methods=['GET', 'POST', 'DELETE'])
 @login_required
