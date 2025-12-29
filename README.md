@@ -39,7 +39,7 @@ SECRET_KEY=tua-chiave-segreta-random
 3. Avvia l'applicazione con Docker:
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 4. Apri il browser e vai a `http://localhost:5003`
