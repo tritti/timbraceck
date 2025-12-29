@@ -27,3 +27,4 @@ data/timbrature.db
 
 # Agent
 .gemini/
+DEFAULT_CREDENTIALS.md

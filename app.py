@@ -1,16 +1,20 @@
 import os
-import sqlite3
 import json
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from dotenv import load_dotenv
+from db_wrapper import NeonDB
+import psycopg2
+
+load_dotenv()
 
 app = Flask(__name__)
-# Use environment variable for secret key to ensure consistency across workers
+# Use environment variable for secret key
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-# Use environment variable if set (for Docker), otherwise use default path
-app.config['DATABASE'] = os.environ.get('DATABASE_PATH', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'timbrature.db'))
+# Use environment variable for database URL
+app.config['DATABASE_URL'] = os.environ.get('DATABASE_URL')
 
 # Aggiunta della variabile 'now' a tutti i template
 @app.context_processor
@@ -18,19 +22,28 @@ def inject_now():
     return {'now': datetime.now()}
 
 # Funzioni di utilità per il database
+# Funzioni di utilità per il database
 def get_db():
-    db = sqlite3.connect(app.config['DATABASE'])
-    db.row_factory = sqlite3.Row
-    return db
+    if 'db' not in g:
+        try:
+            conn = psycopg2.connect(app.config['DATABASE_URL'])
+            g.db = NeonDB(conn)
+        except Exception as e:
+            print(f"Error connecting to database: {e}")
+            raise e
+    return g.db
+
+@app.teardown_appcontext
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 def init_db():
-    if not os.path.exists(os.path.dirname(app.config['DATABASE'])):
-        os.makedirs(os.path.dirname(app.config['DATABASE']))
-    
     print("Inizializzazione del database...")
     db = get_db()
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'schema.sql'), 'r') as f:
-        db.cursor().executescript(f.read())
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'schema_pg.sql'), 'r') as f:
+        db.execute(f.read())
     db.commit()
     print("Database inizializzato con successo!")
 
@@ -41,6 +54,11 @@ def login_required(f):
         if 'user_id' not in session:
             flash('Accesso negato. Effettua il login.', 'error')
             return redirect(url_for('login'))
+        
+        # Enforce password change
+        if session.get('force_change') and request.endpoint not in ('change_password', 'logout', 'static'):
+            return redirect(url_for('change_password'))
+            
         return f(*args, **kwargs)
     return decorated_function
 
@@ -61,8 +79,14 @@ def admin_required(f):
 @app.route('/')
 @login_required
 def index():
+    # Only employees (or admins viewing as employees) access this
     db = get_db()
-    dipendenti = db.execute('SELECT * FROM dipendenti ORDER BY cognome, nome').fetchall()
+    
+    # Handle fetching dipendenti for the grid view
+    # Note: Logic here might need adjustment if we only show logged in user? 
+    # Original logic showed all employees. Keeping as is.
+    cur = db.execute('SELECT * FROM dipendenti ORDER BY cognome, nome')
+    dipendenti = cur.fetchall()
     return render_template('index.html', dipendenti=dipendenti)
 
 @app.route('/timbratura', methods=['POST'])
@@ -72,17 +96,18 @@ def timbratura():
     db = get_db()
     
     # Verifica se esiste una timbratura di ingresso senza uscita
-    ultima_timbratura = db.execute(
-        'SELECT * FROM timbrature WHERE dipendente_id = ? AND fine IS NULL ORDER BY inizio DESC LIMIT 1',
+    cur = db.execute(
+        'SELECT * FROM timbrature WHERE dipendente_id = %s AND fine IS NULL ORDER BY inizio DESC LIMIT 1',
         (dipendente_id,)
-    ).fetchone()
+    )
+    ultima_timbratura = cur.fetchone()
     
     if ultima_timbratura:
         # Se esiste, registra l'uscita
         now = datetime.now()
         db.execute(
-            'UPDATE timbrature SET fine = ? WHERE id = ?',
-            (now.strftime('%Y-%m-%d %H:%M:%S'), ultima_timbratura['id'])
+            'UPDATE timbrature SET fine = %s WHERE id = %s',
+            (now, ultima_timbratura['id'])
         )
         messaggio = "Timbratura di uscita registrata"
         tipo = "uscita"
@@ -90,8 +115,8 @@ def timbratura():
         # Altrimenti registra un nuovo ingresso
         now = datetime.now()
         db.execute(
-            'INSERT INTO timbrature (dipendente_id, inizio) VALUES (?, ?)',
-            (dipendente_id, now.strftime('%Y-%m-%d %H:%M:%S'))
+            'INSERT INTO timbrature (dipendente_id, inizio) VALUES (%s, %s)',
+            (dipendente_id, now)
         )
         messaggio = "Timbratura di ingresso registrata"
         tipo = "ingresso"
@@ -112,27 +137,40 @@ def login():
         password = request.form.get('password')
         
         db = get_db()
-        user = db.execute('SELECT * FROM admin WHERE username = ?', (username,)).fetchone()
+        cur = db.execute('SELECT * FROM admin WHERE username = %s', (username,))
+        user = cur.fetchone()
         
-        # Controlla sia password in chiaro (per la prima esecuzione) o hashata (per le successive)
-        if user and (user['password'] == password or (user['password'].startswith('pbkdf2') and check_password_hash(user['password'], password))):
-            # Se la password è in chiaro, la aggiorniamo con l'hash
+        # Controlla sia password in chiaro (per la prima esecuzione/reset) o hashata
+        if user:
+            pwd_valid = False
+            # Check plain text first (migrazione/reset)
             if user['password'] == password:
+                pwd_valid = True
+                # Hasha la password per sicurezza futura (anche se poi la cambierà)
                 hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-                db.execute('UPDATE admin SET password = ? WHERE id = ?', (hashed_password, user['id']))
+                db.execute('UPDATE admin SET password = %s WHERE id = %s', (hashed_password, user['id']))
                 db.commit()
+            # Check hash standard
+            elif user['password'].startswith('pbkdf2') and check_password_hash(user['password'], password):
+                pwd_valid = True
             
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['role'] = user['role']
-            
-            # Redirect basato sul ruolo
-            if user['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            elif user['role'] == 'dipendente':
-                return redirect(url_for('index'))
-            else:  # viewer o altri
-                return redirect(url_for('index'))
+            if pwd_valid:
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['role'] = user['role']
+                
+                # Check for forced password change
+                if user.get('force_change'):
+                    session['force_change'] = True
+                    return redirect(url_for('change_password'))
+                
+                # Redirect basato sul ruolo
+                if user['role'] == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                elif user['role'] == 'dipendente':
+                     return redirect(url_for('index'))
+                else:  # viewer o altri
+                    return redirect(url_for('index'))
         
         flash('Username o password non validi', 'error')
     
@@ -167,7 +205,9 @@ def admin_change_password_dipendenti():
         hashed_password = generate_password_hash(new_password, method='pbkdf2:sha256')
         
         # Aggiorna password utente 'dipendenti'
-        db.execute('UPDATE admin SET password = ? WHERE role = ?', (hashed_password, 'dipendente'))
+        # Note: 'dipendenti' isn't a user here, we check roles. 
+        # Logic matches original but uses Postgres syntax
+        db.execute('UPDATE admin SET password = %s, force_change = FALSE WHERE role = %s', (hashed_password, 'dipendente'))
         db.commit()
         
         flash('Password per account Dipendenti aggiornata con successo!', 'success')
@@ -177,7 +217,6 @@ def admin_change_password_dipendenti():
 
 @app.route('/change-password', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def change_password():
     if request.method == 'POST':
         current_password = request.form.get('current_password')
@@ -199,13 +238,14 @@ def change_password():
         
         # Verifica password corrente
         db = get_db()
-        user = db.execute('SELECT * FROM admin WHERE id = ?', (session['user_id'],)).fetchone()
+        cur = db.execute('SELECT * FROM admin WHERE id = %s', (session['user_id'],))
+        user = cur.fetchone()
         
         if not user:
             flash('Utente non trovato', 'error')
             return redirect(url_for('logout'))
         
-        # Controlla password corrente (sia in chiaro che hashata)
+        # Controlla password corrente
         password_valid = False
         if user['password'].startswith('pbkdf2'):
             password_valid = check_password_hash(user['password'], current_password)
@@ -218,17 +258,22 @@ def change_password():
         
         # Aggiorna password
         hashed_password = generate_password_hash(new_password, method='pbkdf2:sha256')
-        db.execute('UPDATE admin SET password = ? WHERE id = ?', (hashed_password, session['user_id']))
+        db.execute('UPDATE admin SET password = %s, force_change = FALSE WHERE id = %s', (hashed_password, session['user_id']))
         db.commit()
         
+        session.pop('force_change', None)
         flash('Password cambiata con successo!', 'success')
         
         # Redirect basato sul ruolo
         if session.get('role') == 'admin':
             return redirect(url_for('admin_dashboard'))
         else:
-            return redirect(url_for('admin_report'))
+            return redirect(url_for('index'))
     
+    # If forced, show message
+    if session.get('force_change'):
+        flash('Per sicurezza, devi cambiare la tua password al primo accesso.', 'warning')
+        
     return render_template('change_password.html')
 
 @app.route('/admin')
@@ -932,15 +977,11 @@ def api_stato_dipendenti():
     return jsonify(result)
 
 def create_app():
-    with app.app_context():
-        # Verifica se il database esiste
-        if not os.path.exists(app.config['DATABASE']):
-            init_db()
     return app
 
 if __name__ == '__main__':
-    # Inizializza il database all'avvio
+    # Inizializzazione del database all'avvio (create tables if not exists)
     with app.app_context():
-        if not os.path.exists(app.config['DATABASE']):
-            init_db()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5003)), debug=False)
+        # init_db() # Optional: auto-init schema. For now disable to rely on migration/manual init
+        pass
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5003)), debug=True)

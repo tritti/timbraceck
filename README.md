@@ -1,4 +1,4 @@
-# Sistema Gestione Timbrature
+# Timbraceck
 
 Applicazione web per la gestione delle timbrature dei dipendenti, realizzata con Python, Flask, JavaScript e SQLite.
 

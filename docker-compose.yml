@@ -1,18 +1,18 @@
 version: '3.8'
 
 services:
-  timbrature-app:
+  timbraceck-app:
     build: .
-    container_name: timbrature-flask
+    container_name: timbraceck-flask
     ports:
       - "5003:5003"
     volumes:
       # Persist database data
       - ./data:/app/data
     environment:
-      - FLASK_ENV=production
-      - DATABASE_PATH=/app/data/timbrature.db
-      - SECRET_KEY=prod-secret-key-timbrature-2025
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
     healthcheck:
       # Use wget instead of curl as requested
       test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5003/" ]
