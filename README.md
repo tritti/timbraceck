@@ -1,6 +1,6 @@
 # Timbraceck
 
-Applicazione web per la gestione delle timbrature dei dipendenti, realizzata con Python, Flask, JavaScript e SQLite.
+Applicazione web per la gestione delle timbrature dei dipendenti, realizzata con Python, Flask, JavaScript e **Neon (PostgreSQL)**.
 
 ## Caratteristiche
 
@@ -13,39 +13,50 @@ Applicazione web per la gestione delle timbrature dei dipendenti, realizzata con
 
 ## Requisiti
 
-- Python 3.7+
+- Python 3.10+
 - Flask
-- SQLite
+- PostgreSQL (Neon)
 
 ## Installazione
 
 1. Clona il repository:
 
 ```bash
-git clone https://github.com/yourusername/timbrature.git
-cd timbrature
+git clone https://github.com/tritti/timbraceck.git
+cd timbraceck
 ```
 
 2. Crea un ambiente virtuale e attivalo:
 
 ```bash
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # Su Windows: venv\Scripts\activate
 ```
 
 3. Installa le dipendenze:
 
 ```bash
-pip install Flask Werkzeug
+pip install -r requirements.txt
 ```
 
-4. Avvia l'applicazione:
+4. Configurazione Database:
+
+Crea un file `.env` nella root del progetto:
 
 ```bash
-python app.py
+FLASK_ENV=development
+# Sostituisci con la tua stringa di connessione Neon (Dev o Prod)
+DATABASE_URL=postgresql://user:password@endpoint.neon.tech/neondb
+SECRET_KEY=tua-chiave-segreta-random
 ```
 
-5. Apri il browser e vai a `http://localhost:5000`
+5. Avvia l'applicazione:
+
+```bash
+flask run --port 5003
+```
+
+6. Apri il browser e vai a `http://localhost:5003`
 
 ## Utilizzo
 
@@ -56,40 +67,20 @@ python app.py
 
 ### Area Amministrativa
 
-- Accedi all'area admin da `/login` o dal link "Area Admin" nel menu
-- Credenziali di default: username `admin`, password `admin`
-- Da qui puoi:
-  - Gestire i dipendenti (aggiungere, modificare, eliminare)
-  - Visualizzare i report delle ore lavorate
-  - Analizzare le statistiche di presenza
+- Accedi all'area admin da `/login`
+- **Nota**: Al primo accesso, verrà richiesto di cambiare la password di default.
 
-## Struttura del Progetto
+### Struttura del Progetto
 
 ```
-/timbrature/
+/timbraceck/
 │
 ├── app.py                 # Applicazione Flask principale
+├── db_wrapper.py          # Wrapper per compatibilità Postgres
 ├── database/
-│   ├── schema.sql         # Schema del database
-│   └── timbrature.db      # Database SQLite
+│   ├── schema_pg.sql      # Schema PostgreSQL
+│   └── timbrature.db      # (Legacy) Database SQLite
 ├── static/
-│   ├── css/
-│   │   └── style.css      # Stili CSS personalizzati
-│   └── js/
-│       └── timbrature.js  # JavaScript per la pagina delle timbrature
-└── templates/
-    ├── base.html          # Template base
-    ├── index.html         # Homepage (timbrature)
-    ├── login.html         # Pagina di login
-    └── admin/
-        ├── dashboard.html        # Dashboard admin
-        ├── dipendenti.html       # Gestione dipendenti
-        ├── dipendente_edit.html  # Modifica dipendente
-        └── report.html           # Pagina dei report
+├── templates/
+└── .env                   # Configurazione ambiente (non committato)
 ```
-
-## Note di Sicurezza
-
-- La password dell'admin è hashata nel database
-- Le rotte amministrative sono protette da autenticazione
-- Per un ambiente di produzione, generare una nuova SECRET_KEY
