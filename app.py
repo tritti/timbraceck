@@ -21,6 +21,13 @@ app.config['DATABASE_URL'] = os.environ.get('DATABASE_URL')
 def inject_now():
     return {'now': datetime.now()}
 
+def to_datetime(val, format='%Y-%m-%d %H:%M:%S'):
+    if val is None:
+        return None
+    if isinstance(val, str):
+        return datetime.strptime(val, format)
+    return val
+
 # Funzioni di utilità per il database
 # Funzioni di utilità per il database
 def get_db():
@@ -83,7 +90,7 @@ def index():
     db = get_db()
     
     # Handle fetching dipendenti for the grid view
-    # Note: Logic here might need adjustment if we only show logged in user? 
+    # Note: Logic here might need adjustment if we only show logged in user%s 
     # Original logic showed all employees. Keeping as is.
     cur = db.execute('SELECT * FROM dipendenti ORDER BY cognome, nome')
     dipendenti = cur.fetchall()
@@ -310,7 +317,7 @@ def admin_dipendente_add():
         try:
             hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
             db.execute(
-                "INSERT INTO admin (username, password, role) VALUES (?, ?, ?)",
+                "INSERT INTO admin (username, password, role) VALUES (%s, %s, %s)",
                 (username, hashed_password, 'dipendente')
             )
             db.commit()
@@ -332,7 +339,7 @@ def admin_dipendente_add():
         
         try:
             db.execute(
-                'INSERT INTO dipendenti (nome, cognome, email, data_assunzione, colore) VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO dipendenti (nome, cognome, email, data_assunzione, colore) VALUES (%s, %s, %s, %s, %s)',
                 (nome, cognome, email, data_assunzione, colore)
             )
             db.commit()
@@ -347,7 +354,7 @@ def admin_dipendente_add():
 @admin_required
 def admin_user_delete(id):
     db = get_db()
-    db.execute('DELETE FROM admin WHERE id = ? AND role = ?', (id, 'dipendente'))
+    db.execute('DELETE FROM admin WHERE id = %s AND role = %s', (id, 'dipendente'))
     db.commit()
     return jsonify({'success': True})
 
@@ -358,7 +365,7 @@ def admin_dipendente_edit(id):
     db = get_db()
     
     if request.method == 'DELETE':
-        db.execute('DELETE FROM dipendenti WHERE id = ?', (id,))
+        db.execute('DELETE FROM dipendenti WHERE id = %s', (id,))
         db.commit()
         return jsonify({'success': True})
     
@@ -374,7 +381,7 @@ def admin_dipendente_edit(id):
         else:
             try:
                 db.execute(
-                    'UPDATE dipendenti SET nome = ?, cognome = ?, email = ?, data_assunzione = ?, colore = ? WHERE id = ?',
+                    'UPDATE dipendenti SET nome = %s, cognome = %s, email = %s, data_assunzione = %s, colore = %s WHERE id = %s',
                     (nome, cognome, email, data_assunzione, colore, id)
                 )
                 db.commit()
@@ -384,7 +391,7 @@ def admin_dipendente_edit(id):
         
         return redirect(url_for('admin_dipendenti'))
     
-    dipendente = db.execute('SELECT * FROM dipendenti WHERE id = ?', (id,)).fetchone()
+    dipendente = db.execute('SELECT * FROM dipendenti WHERE id = %s', (id,)).fetchone()
     if not dipendente:
         flash('Dipendente non trovato', 'error')
         return redirect(url_for('admin_dipendenti'))
@@ -437,11 +444,11 @@ def api_report_totale():
         SELECT 
             d.id, d.nome, d.cognome,
             SUM(CASE WHEN t.fine IS NOT NULL 
-                THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                 ELSE 0 END) as ore_totali
         FROM dipendenti d
         LEFT JOIN timbrature t ON d.id = t.dipendente_id
-        WHERE t.inizio >= ? AND t.inizio <= ?
+        WHERE t.inizio >= %s AND t.inizio <= %s
         GROUP BY d.id
         ORDER BY ore_totali DESC
     ''', (data_inizio, data_fine)).fetchall()
@@ -515,14 +522,14 @@ def api_report_dipendente(id):
             t.inizio, 
             t.fine,
             CASE WHEN t.fine IS NOT NULL 
-                THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                 ELSE NULL END as ore
         FROM timbrature t
-        WHERE t.dipendente_id = ? AND t.inizio >= ? AND t.inizio <= ?
+        WHERE t.dipendente_id = %s AND t.inizio >= %s AND t.inizio <= %s
         ORDER BY t.inizio DESC
     ''', (id, data_inizio, data_fine)).fetchall()
     
-    dipendente = db.execute('SELECT nome, cognome FROM dipendenti WHERE id = ?', (id,)).fetchone()
+    dipendente = db.execute('SELECT nome, cognome FROM dipendenti WHERE id = %s', (id,)).fetchone()
     
     result = {
         'nome': dipendente['nome'],
@@ -532,10 +539,8 @@ def api_report_dipendente(id):
     }
     
     for t in timbrature:
-        inizio = datetime.strptime(t['inizio'], '%Y-%m-%d %H:%M:%S')
-        fine = None
-        if t['fine']:
-            fine = datetime.strptime(t['fine'], '%Y-%m-%d %H:%M:%S')
+        inizio = to_datetime(t['inizio'])
+        fine = to_datetime(t['fine'])
         
         result['timbrature'].append({
             'id': t['id'],  # Aggiunto ID per la modifica
@@ -577,7 +582,7 @@ def api_update_timbratura(id):
                 return jsonify({'success': False, 'error': 'L\'ora di fine deve essere successiva all\'inizio'}), 400
         
         db.execute(
-            'UPDATE timbrature SET inizio = ?, fine = ? WHERE id = ?',
+            'UPDATE timbrature SET inizio = %s, fine = %s WHERE id = %s',
             (ts_inizio, ts_fine, id)
         )
         db.commit()
@@ -592,7 +597,7 @@ def api_update_timbratura(id):
 def api_delete_timbratura(id):
     db = get_db()
     try:
-        db.execute('DELETE FROM timbrature WHERE id = ?', (id,))
+        db.execute('DELETE FROM timbrature WHERE id = %s', (id,))
         db.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -616,7 +621,7 @@ def api_report_mensile():
         end_date = f"{selected_year}-12-31 23:59:59"
         
         # Query per raggruppamento mensile
-        group_by = "strftime('%m', t.inizio)"
+        group_by = "to_char(t.inizio, 'MM')"
         labels = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", 
                   "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
         
@@ -626,10 +631,10 @@ def api_report_mensile():
                 SELECT 
                     {group_by} as label_key,
                     SUM(CASE WHEN t.fine IS NOT NULL 
-                        THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                        THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                         ELSE 0 END) as ore_totali
                 FROM timbrature t
-                WHERE t.dipendente_id = ? AND t.inizio >= ? AND t.inizio <= ?
+                WHERE t.dipendente_id = %s AND t.inizio >= %s AND t.inizio <= %s
                 GROUP BY label_key
                 ORDER BY label_key
             ''', (dipendente_id, start_date, end_date)).fetchall()
@@ -638,10 +643,10 @@ def api_report_mensile():
                 SELECT 
                     {group_by} as label_key,
                     SUM(CASE WHEN t.fine IS NOT NULL 
-                        THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                        THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                         ELSE 0 END) as ore_totali
                 FROM timbrature t
-                WHERE t.inizio >= ? AND t.inizio <= ?
+                WHERE t.inizio >= %s AND t.inizio <= %s
                 GROUP BY label_key
                 ORDER BY label_key
             ''', (start_date, end_date)).fetchall()
@@ -684,23 +689,23 @@ def api_report_mensile():
         
         # Query per raggruppamento giornaliero
         # Usa la data completa come chiave per ordinamento e visualizzazione
-        group_by = "strftime('%Y-%m-%d', t.inizio)"
+        group_by = "to_char(t.inizio, 'YYYY-MM-DD')"
         
         params = []
         query_base = f'''
             SELECT 
                 {group_by} as data_giorno,
                 SUM(CASE WHEN t.fine IS NOT NULL 
-                    THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                    THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                     ELSE 0 END) as ore_totali
             FROM timbrature t
-            WHERE t.inizio >= ? AND t.inizio <= ?
+            WHERE t.inizio >= %s AND t.inizio <= %s
         '''
         params.append(start_date)
         params.append(end_date)
         
         if dipendente_id != 'tutti':
-            query_base += " AND t.dipendente_id = ?"
+            query_base += " AND t.dipendente_id = %s"
             params.append(dipendente_id)
             
         query_base += f" GROUP BY data_giorno ORDER BY data_giorno"
@@ -708,7 +713,7 @@ def api_report_mensile():
         report = db.execute(query_base, params).fetchall()
         
         # Genera labels e data
-        # Per semplicità, restituiamo solo i giorni che hanno dati o tutti i giorni nel range?
+        # Per semplicità, restituiamo solo i giorni che hanno dati o tutti i giorni nel range%s
         # Meglio tutti i giorni nel range per continuità
         
         labels = []
@@ -773,18 +778,18 @@ def api_report_distribuzione():
     # Costruisci la query SQL
     params = []
     if dipendente_id != 'tutti':
-        where_clause = "WHERE t.dipendente_id = ? AND t.inizio >= ? AND t.inizio <= ? AND t.fine IS NOT NULL"
+        where_clause = "WHERE t.dipendente_id = %s AND t.inizio >= %s AND t.inizio <= %s AND t.fine IS NOT NULL"
         params = [dipendente_id, data_inizio, data_fine]
     else:
-        where_clause = "WHERE t.inizio >= ? AND t.inizio <= ? AND t.fine IS NOT NULL"
+        where_clause = "WHERE t.inizio >= %s AND t.inizio <= %s AND t.fine IS NOT NULL"
         params = [data_inizio, data_fine]
     
     # Query per ottenere la distribuzione oraria per giorno della settimana
     report = db.execute(f'''
         SELECT 
-            strftime('%w', t.inizio) as giorno_settimana,
+            EXTRACT(DOW FROM t.inizio) as giorno_settimana,
             AVG(CASE WHEN t.fine IS NOT NULL 
-                THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                 ELSE 0 END) as ore_medie
         FROM timbrature t
         {where_clause}
@@ -879,10 +884,10 @@ def api_report_confronto():
             ore_totali = db.execute('''
                 SELECT 
                     SUM(CASE WHEN t.fine IS NOT NULL 
-                        THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                        THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                         ELSE 0 END) as ore_totali
                 FROM timbrature t
-                WHERE t.dipendente_id = ? AND t.inizio >= ? AND t.inizio <= ?
+                WHERE t.dipendente_id = %s AND t.inizio >= %s AND t.inizio <= %s
             ''', (dip['id'], data_inizio, data_fine)).fetchone()['ore_totali'] or 0
             
             result['datasets'].append({
@@ -910,14 +915,14 @@ def api_report_confronto():
             # Query per ottenere le ore mensili del dipendente
             report = db.execute('''
                 SELECT 
-                    strftime('%m', t.inizio) as mese,
+                    to_char(t.inizio, 'MM') as mese,
                     SUM(CASE WHEN t.fine IS NOT NULL 
-                        THEN (julianday(t.fine) - julianday(t.inizio)) * 24 
+                        THEN EXTRACT(EPOCH FROM (t.fine - t.inizio)) / 3600 
                         ELSE 0 END) as ore_totali
                 FROM timbrature t
-                WHERE t.dipendente_id = ? AND t.inizio >= ? AND t.inizio <= ?
-                GROUP BY strftime('%m', t.inizio)
-                ORDER BY mese
+                WHERE t.dipendente_id = %s AND t.inizio >= %s AND t.inizio <= %s
+                GROUP BY 1
+                ORDER BY 1
             ''', (dip['id'], data_inizio, data_fine)).fetchall()
             
             # Inizializza un array di 12 elementi con 0 ore
@@ -969,7 +974,7 @@ def api_stato_dipendenti():
         }
         
         if d['inizio']:
-            inizio = datetime.strptime(d['inizio'], '%Y-%m-%d %H:%M:%S')
+            inizio = to_datetime(d['inizio'])
             stato['inizio'] = inizio.strftime('%d/%m/%Y %H:%M:%S')
         
         result.append(stato)
