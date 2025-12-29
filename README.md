@@ -13,11 +13,10 @@ Applicazione web per la gestione delle timbrature dei dipendenti, realizzata con
 
 ## Requisiti
 
-- Python 3.10+
-- Flask
-- PostgreSQL (Neon)
+- Docker & Docker Compose
+- Account Neon (PostgreSQL)
 
-## Installazione
+## Installazione (Docker)
 
 1. Clona il repository:
 
@@ -26,20 +25,7 @@ git clone https://github.com/tritti/timbraceck.git
 cd timbraceck
 ```
 
-2. Crea un ambiente virtuale e attivalo:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Su Windows: venv\Scripts\activate
-```
-
-3. Installa le dipendenze:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Configurazione Database:
+2. Configurazione:
 
 Crea un file `.env` nella root del progetto:
 
@@ -50,13 +36,22 @@ DATABASE_URL=postgresql://user:password@endpoint.neon.tech/neondb
 SECRET_KEY=tua-chiave-segreta-random
 ```
 
-5. Avvia l'applicazione:
+3. Avvia l'applicazione con Docker:
 
 ```bash
-flask run --port 5003
+docker-compose up --build
 ```
 
-6. Apri il browser e vai a `http://localhost:5003`
+4. Apri il browser e vai a `http://localhost:5003`
+
+---
+
+## Installazione Manuale (Senza Docker)
+
+1. Crea e attiva virtualenv: `python3 -m venv venv` && `source venv/bin/activate`
+2. Installa dipendenze: `pip install -r requirements.txt`
+3. Configura `.env` (vedi sopra)
+4. Avvia: `flask run --port 5003`
 
 ## Utilizzo
 
@@ -82,5 +77,7 @@ flask run --port 5003
 │   └── timbrature.db      # (Legacy) Database SQLite
 ├── static/
 ├── templates/
+├── Dockerfile             # Configurazione Docker
+├── docker-compose.yml     # Orchestrazione servizi
 └── .env                   # Configurazione ambiente (non committato)
 ```
