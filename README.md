@@ -27,14 +27,13 @@ cd timbraceck
 
 2. Configurazione:
 
-Crea un file `.env` nella root del progetto:
+Copia il file di esempio per creare la tua configurazione:
 
 ```bash
-FLASK_ENV=development
-# Sostituisci con la tua stringa di connessione Neon (Dev o Prod)
-DATABASE_URL=postgresql://user:password@endpoint.neon.tech/neondb
-SECRET_KEY=tua-chiave-segreta-random
+cp .env.example .env
 ```
+
+Modifica il file `.env` inserendo la tua stringa di connessione Neon e una Secret Key sicura.
 
 3. Avvia l'applicazione con Docker:
 
