@@ -1,5 +1,4 @@
-import os
-import json
+import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,6 +8,11 @@ from db_wrapper import NeonDB
 import psycopg2
 
 load_dotenv()
+
+# Set timezone to Rome
+os.environ['TZ'] = 'Europe/Rome'
+if hasattr(time, 'tzset'):
+    time.tzset()
 
 app = Flask(__name__)
 # Use environment variable for secret key
